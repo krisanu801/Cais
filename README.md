@@ -128,6 +128,10 @@ The `configs/config.yaml` file contains the following configuration options:
 - latexcodec
 - bibtexparser
 
+## Sample Output 
+
+For a simple prompt like compare adam on mnist and makemoons , it created a well draft pdf  , along with creating code scripts  , and executing them , the final result is [paper](AIgeneratedpaper1.pdf)
+
 ## Logging
 
 The system uses the `logging` module for logging events and errors. The logging configuration can be found in the `configs/logging.conf` file.
@@ -138,4 +142,4 @@ Contributions are welcome! Please submit a pull request with your changes.
 
 ## License
 
-[License]
+[License](License)
