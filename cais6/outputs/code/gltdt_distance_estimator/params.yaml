@@ -1,0 +1,43 @@
+data_load:
+  train_test_split: 0.8
+  image_size: 128
+  num_channels: 1
+
+time_delay_estimation:
+  method: "gaussian_process"
+  gp_kernel: "ExpSquaredKernel"
+  gp_metric: 10.0
+
+lens_model_fitting:
+  model_type: "SIE"
+  prior_x0_min: -10
+  prior_x0_max: 10
+  prior_y0_min: -10
+  prior_y0_max: 10
+  prior_q_min: 0.0
+  prior_q_max: 1.0
+  prior_phi_min: 0.0
+  prior_phi_max: 3.14159265359
+  prior_b_min: 0.0
+  prior_b_max: 5.0
+  nwalkers: 32
+  mcmc_steps: 5000
+
+machine_learning_training:
+  cnn_epochs: 10
+  cnn_batch_size: 32
+  cnn_learning_rate: 0.001
+  cnn_dropout_rate: 0.25
+  gan_latent_dim: 100
+  gan_generator_learning_rate: 0.0002
+  gan_discriminator_learning_rate: 0.0002
+
+distance_calculation:
+  cosmology_H0: 70
+  cosmology_Om0: 0.3
+  cosmology_Ode0: 0.7
+
+line_of_sight_correction:
+  kappa_ext_default: 0.05
+  gamma1_ext_default: 0.02
+  gamma2_ext_default: 0.01

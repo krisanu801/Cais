@@ -1,0 +1,49 @@
+data:
+  data_path: "data/lensed_quasar_data.csv" # Path to the main data file
+  image_size: 128 # Size of the input images for the CNN
+  num_channels: 1 # Number of channels in the input images (e.g., 1 for grayscale, 3 for RGB)
+  train_test_split: 0.8 # Ratio for splitting data into training and testing sets
+
+model:
+  lens_model_type: "SIE" # Type of lens model to use (e.g., SIE, SPEMD)
+  time_delay_estimation_method: "gaussian_process" # Method for estimating time delays (e.g., cross_correlation, dispersion_minimization, gaussian_process)
+  line_of_sight_correction: True # Whether to apply line-of-sight corrections
+
+  cnn_params:
+    epochs: 10 # Number of training epochs
+    batch_size: 32 # Batch size for training
+    learning_rate: 0.001 # Learning rate for the optimizer
+    optimizer: "adam" # Optimizer to use (e.g., adam, sgd)
+    loss_function: "mse" # Loss function to use (e.g., mse, mae)
+    dropout_rate: 0.25 # Dropout rate for regularization
+    l1_regularization: 0.001 # L1 regularization strength
+    l2_regularization: 0.001 # L2 regularization strength
+
+  gan_params:
+    latent_dim: 100 # Dimension of the latent space for the GAN
+    generator_learning_rate: 0.0002 # Learning rate for the generator
+    discriminator_learning_rate: 0.0002 # Learning rate for the discriminator
+    generator_optimizer: "adam" # Optimizer for the generator
+    discriminator_optimizer: "adam" # Optimizer for the discriminator
+
+logging:
+  level: "INFO" # Logging level (e.g., DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  format: "%(asctime)s - %(levelname)s - %(message)s" # Logging format
+
+output:
+  results_dir: "/Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/results" # Directory to save results (plots, models, etc.)
+
+cosmology:
+  H0: 70 # Hubble constant (km/s/Mpc)
+  Om0: 0.3 # Omega matter
+  Ode0: 0.7 # Omega dark energy
+
+priors:
+  lens_redshift:
+    type: "uniform" # Type of prior distribution (e.g., uniform, gaussian)
+    min: 0.2 # Minimum value for the prior
+    max: 0.8 # Maximum value for the prior
+  source_redshift:
+    type: "uniform"
+    min: 1.0
+    max: 3.0

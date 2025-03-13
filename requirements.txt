@@ -1,0 +1,14 @@
+google-generativeai
+python-dotenv
+requests
+beautifulsoup4
+arxiv
+PyYAML
+tiktoken
+openai
+tenacity
+matplotlib
+pandas
+scipy
+latexcodec
+bibtexparser

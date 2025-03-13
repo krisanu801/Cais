@@ -1,0 +1,65 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.eggs/
+dist/
+build/
+wheels/
+*.egg-info/
+_version.py
+MANIFEST.in
+
+# PyInstaller
+#  Usually these files are written into a dist directory.
+#  See https://github.com/pyinstaller/pyinstaller/blob/development/docs/spec-files/contents.rst#binding-resources
+#  Adds more paths to ignore if you use the Update the source folder option described in the manual.
+/dist
+/build
+
+# Environments
+.env
+venv/
+ENV/
+env/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.pytest_cache/
+.scrapy
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Visual Studio Code
+.vscode/
+
+# MyPy cache
+.mypy_cache/
+
+# Logs
+*.log
+
+# Data
+/data/*
+/outputs/*
+
+# Configs
+/configs/config.yaml
+
+# OS generated files #
+.DS_Store
+Thumbs.db

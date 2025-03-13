@@ -1,0 +1,50 @@
+# Bytecode
+**/__pycache__
+*.pyc
+*.pyo
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+tmp/
+
+# OS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Data
+data/
+
+# DVC
+.dvc/
+.dvc.lock
+dvc.out
+
+# Virtual environment
+venv/
+
+# Compiled source
+*.com
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Jupyter Notebook checkpoint files
+.ipynb_checkpoints/
+
+# Output files
+/Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/results/
+
+# Temporary files created by code editors
+*.tmp

@@ -1,0 +1,16 @@
+numpy
+scipy
+astropy
+matplotlib
+pandas
+scikit-learn
+tensorflow
+keras
+PyYAML
+emcee
+corner
+dvc
+george
+pywavelets
+Pillow
+seaborn
