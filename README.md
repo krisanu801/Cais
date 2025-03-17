@@ -1,4 +1,4 @@
-# cais6: Multi-Agent AI Novel Scientist System
+# cais6: Multi-Agent Fully Automated Scientific Discovery System
 
 ## Project Description
 
