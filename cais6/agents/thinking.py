@@ -3,7 +3,7 @@ import json
 import time
 
 # Setup Gemini API (Replace with your API Key)
-genai.configure(api_key="AIzaSyCoGZgxiG3fxp7DLbQiDJVeZWOQGTOiNRg")
+genai.configure(api_key="<YOURGEMINIAPIKEY>")
 #model = genai.GenerativeModel('gemini-2.0-flash')
 
 class Agent:
