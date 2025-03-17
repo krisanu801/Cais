@@ -1,4 +1,4 @@
-# cais6: Multi-Agent AI Scientist System
+# cais6: Multi-Agent AI Novel Scientist System
 
 ## Project Description
 
@@ -25,7 +25,7 @@ cais6 is a Python project that aims to develop a fully autonomous, multi-agent A
 
 ## Sample Output
 
-For a simple prompt like "create a better optimizer than rmsprop and adam and compare only on *makemoons" it gave us output [PDF](AI
+For a simple prompt like "create a better optimizer than rmsprop and adam and compare only on *makemoons" it gave us output [PDF](AIgeneratedpaper.pdf)
 
 ## Project Structure
 
