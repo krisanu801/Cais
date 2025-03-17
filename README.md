@@ -23,6 +23,10 @@ cais6 is a Python project that aims to develop a fully autonomous, multi-agent A
 - **Writing Agent:** Drafts a structured LaTeX research paper incorporating results, citations, and figures.
 - **Self-Review Agent:** Provides critical feedback, ensuring clarity, coherence, and logical soundness.
 
+## Sample Output
+
+For a simple prompt like "create a better optimizer than rmsprop and adam and compare only on *makemoons" it gave us output [PDF](AI
+
 ## Project Structure
 
 ```
