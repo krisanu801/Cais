@@ -215,18 +215,20 @@ class ResearchAgent:
             max_results=num_papers
         )
         save_paths = []
+        titles = []
 
         for paper in search.results():
             paper_id = paper.entry_id.split("/")[-1]  # Extract arXiv ID
             pdf_url = paper.pdf_url  # Get the PDF link
             save_path = os.path.join(save_dir, f"{paper_id}.pdf")
+            titles.append(paper.title)
         
             print(f"Downloading: {paper.title}")
             paper.download_pdf(filename=save_path)  # Download full paper
         
             print(f"Saved: {save_path}")
             save_paths.append(save_path)
-        return save_paths
+        return save_paths , titles
 
     def conduct_literature_review(self,chat_history , research_idea: str) -> Dict[str, str]:
         """
@@ -246,12 +248,12 @@ class ResearchAgent:
         research_idea = self.finding_topic(research_idea)
         logger.info(f"Research idea: {research_idea}")
         try:
-            save_paths = self.download_arxiv_papers(research_idea)
+            save_paths , titles = self.download_arxiv_papers(research_idea)
             summaries = {}
-            for save_path in save_paths:
+            for save_path , title in zip(save_paths , titles):
                 try:
                     summary = self.summarize_paper(self.extract_text_from_pdf(save_path))
-                    summaries[save_path] = summary
+                    summaries[title] = summary
                 except Exception as e:
                     logger.exception(f"Error summarizing paper: {e}")
                     summaries[save_path] = f"Error summarizing paper: {e}"
@@ -279,7 +281,7 @@ if __name__ == '__main__':
 
     research_agent = ResearchAgent(config)
     research_idea = "create a better optimizer than rmsprop for nonconvex landscape"
-    literature = research_agent.conduct_literature_review(None , research_idea)
+    literature , _ = research_agent.conduct_literature_review(None , research_idea)
 
     if literature:
         print("Literature Review:")
