@@ -43,7 +43,9 @@ cais6/
 │   ├── paper_writing/
 │   │   └── writing_agent.py
 │   └── self_review/
-│       └── self_review_agent.py
+│   |   └── self_review_agent.py
+|   |__ thinking.py
+|   |__ rethink.py 
 ├── utils/
 │   ├── gemini_api.py
 │   ├── latex_utils.py
