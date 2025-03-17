@@ -22,6 +22,8 @@ cais6 is a Python project that aims to develop a fully autonomous, multi-agent A
 - **Citation Agent:** Ensures proper LaTeX/BibTeX citations while connecting past research to the current study.
 - **Writing Agent:** Drafts a structured LaTeX research paper incorporating results, citations, and figures.
 - **Self-Review Agent:** Provides critical feedback, ensuring clarity, coherence, and logical soundness.
+- **Thinking Agent:** Provides novel ideas and refines them by multistep reasoning.
+- **Rethink Agent:** Check if results from experiments fropm a certain iudea was upto mark , if not regenertaion of idea.
 
 ## Sample Output
 
