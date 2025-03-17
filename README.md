@@ -146,4 +146,4 @@ Contributions are welcome! Please submit a pull request with your changes.
 
 ## License
 
-[License]
+[License](LICENSE)
