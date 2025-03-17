@@ -2,6 +2,7 @@ import logging
 from typing import Dict, Any
 import google.generativeai as genai
 import os
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -13,7 +14,7 @@ class GeneratingAgent:
     Agent responsible for generating novel research ideas and methodologies.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self,config: Dict[str, Any]):
         """
         Initializes the GeneratingAgent with a configuration.
 
@@ -57,7 +58,32 @@ class GeneratingAgent:
             logger.error(f"Error initializing GeneratingAgent: {e}")
             raise
 
-    def generate_research_idea(self, research_topic: str) -> str:
+    def query_gemini(self, prompt: str) -> str:
+        """
+        Sends a prompt to Gemini and returns the response.
+
+        Args:
+            prompt (str): The prompt to send to Gemini.
+
+        Returns:
+            str: The response from Gemini.
+        """
+        try:
+            response = self.chat.send_message(
+                prompt,
+                generation_config=self.generation_config,
+                safety_settings=self.safety_settings,
+            )
+            self.chat_history = self.chat.history
+            return response.text
+        except :
+            logger.error(f"Error querying Gemini: {e}")
+            time.sleep(50)
+            self.chat = self.model.start_chat()
+            self.chat.history = self.chat_history
+            return self.query_gemini(prompt)
+
+    def generate_research_idea(self, chat_history ,research_topic: str) -> str:
         """
         Generates a novel research idea based on the given research topic using the Gemini API.
 
@@ -67,6 +93,10 @@ class GeneratingAgent:
         Returns:
             str: A string containing the generated research idea.
         """
+        self.chat = self.model.start_chat()
+        if chat_history is not None:
+            self.chat.history = chat_history
+        self.chat_history = chat_history
         try:
             prompt = f"""
             You are an expert research scientist. Generate a novel and specific research idea 
@@ -80,19 +110,9 @@ class GeneratingAgent:
             include mathematics if needed.
             """
 
-            response = self.model.generate_content(
-                prompt,
-                generation_config=self.generation_config,
-                safety_settings=self.safety_settings,
-            )
-
-            if response.prompt_feedback and response.prompt_feedback.block_reason:
-                logger.warning(f"The prompt was blocked due to: {response.prompt_feedback.block_reason}")
-                return "The prompt was blocked due to safety concerns. Please refine the research topic."
-
-            research_idea = response.text
-            logger.info(f"Generated research idea: {research_idea}")
-            return research_idea
+            response = self.query_gemini(prompt)
+            logger.info(f"Generated research idea: {response}")
+            return response , self.chat_history
 
         except Exception as e:
             logger.exception(f"Error generating research idea: {e}")
@@ -105,7 +125,7 @@ if __name__ == '__main__':
     import yaml
 
     try:
-        with open('../../configs/config.yaml', 'r') as f:
+        with open('/Users/krisanusarkar/Documents/ML/unt/generated/cais6/configs/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
     except FileNotFoundError:
         print("Error: config.yaml not found.  Make sure it exists and is in the correct location.")
@@ -116,5 +136,10 @@ if __name__ == '__main__':
 
     generating_agent = GeneratingAgent(config)
     research_topic = "Artificial Intelligence in Healthcare"
-    idea = generating_agent.generate_research_idea(research_topic)
+    idea = generating_agent.generate_research_idea(None ,research_topic)
     print(f"Generated Research Idea:\n{idea}")
+
+
+
+
+    

@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Any
 import google.generativeai as genai
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,7 +13,7 @@ class SelfReviewAgent:
     Agent responsible for providing critical feedback on the drafted paper.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self,config: Dict[str, Any]):
         """
         Initializes the SelfReviewAgent with a configuration.
 
@@ -28,7 +29,7 @@ class SelfReviewAgent:
                 "temperature": 0.7,
                 "top_p": 1,
                 "top_k": 1,
-                "max_output_tokens": 8192*256,
+                "max_output_tokens": 33554432,
             }
             self.safety_settings = [
                 {
@@ -56,7 +57,32 @@ class SelfReviewAgent:
             logger.error(f"Error initializing SelfReviewAgent: {e}")
             raise
 
-    def review_and_revise(self, latex_paper: str) -> str:
+    def query_gemini(self, prompt: str) -> str:
+        """
+        Sends a prompt to Gemini and returns the response.
+
+        Args:
+            prompt (str): The prompt to send to Gemini.
+
+        Returns:
+            str: The response from Gemini.
+        """
+        try:
+            response = self.chat.send_message(
+                prompt,
+                generation_config=self.generation_config,
+                safety_settings=self.safety_settings,
+            )
+            self.chat_history = self.chat.history
+            return response.text
+        except :
+            logger.error(f"Error querying Gemini: {e}")
+            time.sleep(100)
+            self.chat = self.model.start_chat()
+            self.chat.history = self.chat_history
+            return self.query_gemini(prompt)
+
+    def review_and_revise(self,chat_history ,   latex_paper: str) -> str:
         """
         Reviews the given LaTeX paper and suggests revisions for clarity, coherence, and logical soundness using the Gemini API.
 
@@ -66,10 +92,21 @@ class SelfReviewAgent:
         Returns:
             str: A string containing the revised LaTeX paper.
         """
+        self.chat = self.model.start_chat()
+        if chat_history is not None:
+            self.chat.history = chat_history
+        self.chat_history = chat_history
         try:
             prompt = f"""
-            You are an expert research scientist and editor. Review the following LaTeX research paper for clarity, coherence, logical soundness, and grammatical correctness.
+            You are an expert research scientist and editor. Review the following LaTeX research paper of 6 to 7 pages for clarity, coherence, logical soundness, and grammatical correctness.
             Provide specific suggestions for improvement and revise the paper accordingly.
+            Incorporate the provided results and cite relevant literature using the provided BibTeX entries.
+            Include mathematical equations if needed.
+            Include paths of images that you have already saved. along with proper description of them in results.
+            give extremely detailed output.Incorporate the provided results and cite relevant literature using the provided BibTeX entries.
+            Include mathematical equations if needed.
+            Include paths of images that you have already saved. along with proper description of them in results.
+            give extremely detailed output.
 
             LaTeX Research Paper:
             ```latex
@@ -82,23 +119,13 @@ class SelfReviewAgent:
             ```
             """
 
-            response = self.model.generate_content(
-                prompt,
-                generation_config=self.generation_config,
-                safety_settings=self.safety_settings,
-            )
-
-            if response.prompt_feedback and response.prompt_feedback.block_reason:
-                logger.warning(f"The prompt was blocked due to: {response.prompt_feedback.block_reason}")
-                return "% The prompt was blocked due to safety concerns. Please refine the paper content."
-
-            revised_latex_paper = response.text
+            revised_latex_paper = self.query_gemini(prompt)
             # Extract LaTeX code from markdown format if present
             if "```latex" in revised_latex_paper:
                 revised_latex_paper = revised_latex_paper.split("```latex")[1].split("```")[0].strip()
 
             logger.info(f"Revised LaTeX paper:\n{revised_latex_paper}")
-            return revised_latex_paper
+            return revised_latex_paper , self.chat_history
 
         except Exception as e:
             logger.exception(f"Error reviewing and revising LaTeX paper: {e}")
@@ -111,7 +138,7 @@ if __name__ == '__main__':
     import yaml
 
     try:
-        with open('../../configs/config.yaml', 'r') as f:
+        with open('/Users/krisanusarkar/Documents/ML/unt/generated/cais6/configs/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
     except FileNotFoundError:
         print("Error: config.yaml not found.  Make sure it exists and is in the correct location.")
@@ -120,7 +147,7 @@ if __name__ == '__main__':
         print(f"Error parsing config.yaml: {e}")
         exit()
 
-    self_review_agent = SelfReviewAgent(config)
+    self_review_agent = SelfReviewAgent(None , config)
     latex_paper = """
     \\documentclass{article}
     \\title{A Simple Paper}

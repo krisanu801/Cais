@@ -1,0 +1,2 @@
+DA-RMSprop Test Accuracy: 0.9100
+AdamW Test Accuracy: 0.7450

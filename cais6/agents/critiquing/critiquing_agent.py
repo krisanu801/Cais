@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Any
 import google.generativeai as genai
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -12,7 +13,7 @@ class CritiquingAgent:
     Agent responsible for evaluating the feasibility and flaws of research ideas.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self,config: Dict[str, Any]):
         """
         Initializes the CritiquingAgent with a configuration.
 
@@ -55,8 +56,32 @@ class CritiquingAgent:
         except Exception as e:
             logger.error(f"Error initializing CritiquingAgent: {e}")
             raise
+    def query_gemini(self, prompt: str) -> str:
+        """
+        Sends a prompt to Gemini and returns the response.
 
-    def critique_and_refine(self, research_idea: str) -> str:
+        Args:
+            prompt (str): The prompt to send to Gemini.
+
+        Returns:
+            str: The response from Gemini.
+        """
+        try:
+            response = self.chat.send_message(
+                prompt,
+                generation_config=self.generation_config,
+                safety_settings=self.safety_settings,
+            )
+            self.chat_history = self.chat.history
+            return response.text
+        except :
+            logger.error(f"Error querying Gemini: {e}")
+            time.sleep(100)
+            self.chat = self.model.start_chat()
+            self.chat.history = self.chat_history
+            return self.query_gemini(prompt)
+
+    def critique_and_refine(self, chat_history ,research_idea: str) -> str:
         """
         Critiques the given research idea and suggests refinements using the Gemini API.
 
@@ -65,7 +90,11 @@ class CritiquingAgent:
 
         Returns:
             str: A string containing the refined research idea.
-        """
+        """        
+        self.chat = self.model.start_chat()
+        if chat_history is not None:
+            self.chat.history = chat_history
+        self.chat_history = chat_history
         try:
             prompt = f"""
             You are an expert research scientist. Evaluate the following research idea for feasibility, 
@@ -81,19 +110,9 @@ class CritiquingAgent:
             include mathematics if needed
             """
 
-            response = self.model.generate_content(
-                prompt,
-                generation_config=self.generation_config,
-                safety_settings=self.safety_settings,
-            )
-
-            if response.prompt_feedback and response.prompt_feedback.block_reason:
-                logger.warning(f"The prompt was blocked due to: {response.prompt_feedback.block_reason}")
-                return "The prompt was blocked due to safety concerns. Please refine the research idea."
-
-            refined_idea = response.text
-            logger.info(f"Refined research idea: {refined_idea}")
-            return refined_idea
+            response = self.query_gemini(prompt)
+            logger.info(f"Refined research idea: {response}")
+            return response , self.chat_history
 
         except Exception as e:
             logger.exception(f"Error critiquing and refining research idea: {e}")
@@ -106,7 +125,7 @@ if __name__ == '__main__':
     import yaml
 
     try:
-        with open('../../configs/config.yaml', 'r') as f:
+        with open('/Users/krisanusarkar/Documents/ML/unt/generated/cais6/configs/config.yaml', 'r') as f:
             config = yaml.safe_load(f)
     except FileNotFoundError:
         print("Error: config.yaml not found.  Make sure it exists and is in the correct location.")
@@ -120,5 +139,5 @@ if __name__ == '__main__':
     Research Idea: Develop a new deep learning model for predicting stock prices based on social media sentiment analysis.
     Methodology: Collect Twitter data, train a sentiment analysis model, and use the sentiment scores as input to a deep learning model for stock price prediction.
     """
-    refined_idea = critiquing_agent.critique_and_refine(research_idea)
+    refined_idea = critiquing_agent.critique_and_refine(None ,research_idea)
     print(f"Refined Research Idea:\n{refined_idea}")

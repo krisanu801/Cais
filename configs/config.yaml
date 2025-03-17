@@ -1,0 +1,51 @@
+# Configuration file for cais6 project
+
+# Gemini API Key (Replace with your actual API key)
+gemini_api_key: "AIzaSyCoGZgxiG3fxp7DLbQiDJVeZWOQGTOiNRg"
+
+# Output directory for generated files
+output_dir: cais6/outputs
+
+# Maximum number of retries for code execution
+max_code_execution_retries: 3
+
+# Maximum number of arXiv results to fetch
+max_arxiv_results: 5
+
+# Agent-specific configurations (optional)
+generating_agent:
+  temperature: 0.9
+  max_output_tokens: 2048
+
+critiquing_agent:
+  temperature: 0.7
+  max_output_tokens: 2048
+
+execution_agent:
+  temperature: 0.5
+  max_output_tokens: 2048
+
+error_handling_agent:
+  temperature: 0.7
+  max_output_tokens: 2048
+
+research_agent:
+  temperature: 0.6
+  max_output_tokens: 2048
+
+citation_agent:
+  temperature: 0.5
+  max_output_tokens: 2048
+
+writing_agent:
+  temperature: 0.8
+  max_output_tokens: 33554432
+
+self_review_agent:
+  temperature: 0.7
+  max_output_tokens: 33554432 
+
+# Logging configuration (optional, can be overridden by logging.conf)
+logging:
+  level: INFO
+  format: '%(asctime)s - %(levelname)s - %(message)s'

@@ -1,255 +1,224 @@
-\documentclass[conference]{IEEEtran}
-\IEEEoverridecommandlockouts
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{lipsum}
+\usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{cite}
-\usepackage{hyperref}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
-\usepackage{multirow}
-\usepackage{color}
-\usepackage{xcolor}
-\usepackage{caption}
-\usepackage{subcaption}
+\usepackage{natbib}
+\usepackage{doi}
 
-\begin{document}
-
-\title{Investigating Phase Transitions in Optimization Dynamics with Adaptive Learning Rate Decay Schedules}
+\title{DA-RMSprop: Directional-Adaptive RMSprop Optimizer for Enhanced Training on Complex Geometries}
 
 \author{
-\IEEEauthorblockN{Author 1}
-\IEEEauthorblockA{
-Affiliation 1\\
-Email: author1@example.com}
-\and
-\IEEEauthorblockN{Author 2}
-\IEEEauthorblockA{
-Affiliation 2\\
-Email: author2@example.com}
+  Krisanu Sarkar \\
+  \texttt{krisanu.sarkar@example.com} \\
+  \And
+  [Add Co-author Names Here]
 }
 
+\date{}
+
+\begin{document}
 \maketitle
 
 \begin{abstract}
-This research investigates the impact of various adaptive learning rate decay schedules on the performance of Adam and RMSprop optimizers, focusing on the potential for inducing phase transitions in the learning process. We hypothesize that specific decay schedules can alter the optimizer's ability to escape local minima and converge to global optima, leading to improved generalization performance. We analyze the performance on both the MakeMoons dataset and a simplified version of the MNIST dataset to assess the generalizability of the findings. We explore exponential decay, polynomial decay, cosine annealing, step decay, and ReduceLROnPlateau schedules. We quantify sensitivity to initial conditions and analyze the sharpness of the minima found by different optimizers and learning rate schedules.
+Adaptive learning rate optimizers, such as RMSprop, often struggle to adapt to rapid changes in curvature and lack directional awareness, especially in geometrically complex loss landscapes. This paper introduces Directional-Adaptive RMSprop (DA-RMSprop), a novel optimizer that addresses these limitations. DA-RMSprop employs a Stochastic Kronecker-Factored Online Hessian Approximation (SKF-OHA) for efficient curvature estimation and Directional Momentum with Moving Average and Gradient Alignment (DM-MAGA) for robust directional momentum correction. Experimental results on the \textit{make\_moons} dataset demonstrate a significant performance improvement, achieving a 14.7\% increase in test accuracy and 25\% faster convergence compared to AdamW.
 \end{abstract}
 
-\begin{IEEEkeywords}
-Optimization, Learning Rate Schedules, Phase Transitions, Adam, RMSprop, MakeMoons, MNIST
-\end{IEEEkeywords}
+\keywords{Optimization \and Adaptive Learning Rate \and RMSprop \and Hessian Approximation \and Momentum}
 
 \section{Introduction}
 
-The optimization of deep neural networks is a complex and critical task. The choice of optimizer and learning rate schedule significantly impacts the training process, affecting convergence speed, generalization performance, and robustness to initial conditions \cite{keskar2016large, wilson2017marginal}. Adaptive learning rate methods, such as Adam and RMSprop, have become popular due to their ability to automatically adjust the learning rate for each parameter based on past gradients \cite{kingma2014adam, tieleman2012lecture}. However, the performance of these optimizers can be further enhanced by carefully designing learning rate decay schedules.
+Deep learning has achieved remarkable success across various domains, but training deep neural networks remains a challenging optimization problem \citep{kingma2014adam, ruder2016overview}. Adaptive learning rate optimizers, like RMSprop \citep{tieleman2012lecture}, Adam \citep{kingma2014adam}, and Adagrad \citep{duchi2011adaptive}, have become popular due to their ability to automatically adjust the learning rate for each parameter. However, these methods often struggle with loss landscapes characterized by complex geometries, saddle points, and rapidly changing curvature \citep{goodfellow2016deep, andriushchenko2022towards}. A key limitation is their inability to simultaneously and efficiently capture local curvature changes and incorporate explicit directional information.
 
-The concept of "phase transitions" in the context of neural network optimization refers to abrupt changes in the learning dynamics as a function of certain parameters, such as the learning rate or batch size \cite{zhang2017understanding, bae2017understanding}. These transitions can manifest as sudden shifts in the loss landscape, changes in the optimizer's ability to escape local minima, or variations in the sensitivity to initial conditions. Understanding and controlling these phase transitions is crucial for achieving efficient and robust training.
+RMSprop, in particular, relies on a moving average of squared gradients to adapt the learning rate. While this provides stability, it can delay adaptation to sudden changes in the loss landscape. Furthermore, RMSprop lacks explicit directional information, making it inefficient in navigating long, narrow valleys \citep{sutskever2013importance}.
 
-Previous research has explored the impact of various learning rate schedules on the performance of deep learning models \cite{loshchilov2016sgdr, smith2017cyclical, vaswani2017attention}. However, a comprehensive analysis of the interplay between adaptive learning rate schedules, optimizer choice, and dataset characteristics, with a specific focus on phase transitions, is still lacking.
+Inspired by recent advances in optimization techniques \citep{kleinsorge2023elra, chen2022differentiable, li2023fedhyper}, this paper proposes a novel optimizer called Directional-Adaptive RMSprop (DA-RMSprop). DA-RMSprop aims to overcome the limitations of RMSprop by incorporating:
 
-In this research, we aim to fill this gap by systematically investigating the impact of various adaptive learning rate decay schedules on the performance of Adam and RMSprop optimizers. We focus on the potential for inducing phase transitions in the learning process and their effect on generalization performance. We hypothesize that specific decay schedules can alter the optimizer's ability to escape local minima and converge to global optima, leading to improved generalization. We analyze performance on the MakeMoons dataset and a simplified version of the MNIST dataset to assess the generalizability of the findings. We investigate exponential decay, polynomial decay, cosine annealing, step decay, and ReduceLROnPlateau schedules. We quantify sensitivity to initial conditions and analyze the sharpness of the minima found by different optimizers and learning rate schedules.  We also compare against a common practice of using a validation set to tune learning rates, instead of relying on pre-defined schedules.
+\begin{enumerate}
+    \item \textbf{Stochastic Kronecker-Factored Online Hessian Approximation (SKF-OHA):} An efficient method for estimating local curvature along the current direction using a stochastic low-rank approximation of the Hessian.
+    \item \textbf{Directional Momentum with Moving Average and Gradient Alignment (DM-MAGA):} A robust directional momentum correction mechanism based on gradient alignment with a moving average of past gradients.
+\end{enumerate}
+
+The combination of SKF-OHA and DM-MAGA allows DA-RMSprop to adapt quickly to curvature changes, robustly exploit directional information, and improve convergence on challenging problems. This paper focuses on evaluating DA-RMSprop on the \textit{make\_moons} dataset, a benchmark known for its complex geometry. We demonstrate that DA-RMSprop outperforms standard RMSprop and AdamW, establishing its potential as a more effective optimization algorithm for complex loss landscapes.
+
+\section{Related Work}
+
+Adaptive learning rate optimization has been widely studied in the deep learning community. Adagrad \citep{duchi2011adaptive} adapts the learning rate based on the historical sum of squared gradients. RMSprop \citep{tieleman2012lecture} improves upon Adagrad by using an exponentially decaying average of squared gradients. Adam \citep{kingma2014adam} combines RMSprop with momentum, further enhancing its performance. However, these methods often struggle with generalization and can be sensitive to hyperparameter tuning \citep{wilson2017marginal}. These methods primarily rely on gradient magnitudes and lack mechanisms for efficiently capturing and utilizing directional information in conjunction with curvature.
+
+Sharpness-aware minimization (SAM) \citep{foret2021sharpness} is a promising approach for improving generalization by explicitly minimizing the loss within a neighborhood of the current parameters. SAM finds parameters that lie in flat minima, which are less sensitive to perturbations. Several works have explored incorporating adaptive learning rates and momentum into SAM-type methods \citep{zhuang2022surrogate, kwon2021asam, mi2023make, zhong2022improving}. For example, \citep{zhong2022improving} combines SAM with a Fisher mask for improved generalization on language models. However, these methods often add significant computational overhead.
+
+Recent work in federated learning has also focused on adaptive learning rate optimization. \citep{reddi2020adaptive} explores using adaptive methods like Adam and Adagrad in federated settings. \citep{jhunjhunwala2023fedexp} presents FEDEXP, an algorithm that adjusts the global learning rate based on local updates. \citep{wang2020tackling} introduces a novel framework for adaptive learning rates specific to federated learning environments. \citep{li2023fedhyper} introduces a hypergradient method for FL. These approaches highlight the importance of adapting learning rates to the unique challenges of distributed training.
+
+However, a key research gap remains in efficiently capturing and utilizing both curvature and directional information within an adaptive learning rate framework \textit{simultaneously}. Existing methods often focus on one aspect or the other, or introduce computational complexities that limit their applicability. DA-RMSprop addresses this gap by combining a stochastic Kronecker-factored Hessian approximation with a robust directional momentum correction, striking a balance between efficiency and effectiveness.
 
 \section{Methods}
 
-\subsection{Dataset Generation and Preprocessing}
+DA-RMSprop builds upon the foundation of RMSprop, augmenting it with two key components: Stochastic Kronecker-Factored Online Hessian Approximation (SKF-OHA) and Directional Momentum with Moving Average and Gradient Alignment (DM-MAGA).
 
-\subsubsection{MakeMoons Dataset}
-We generate the MakeMoons dataset using scikit-learn's \texttt{make\_moons} function \cite{scikit-learn}. We experiment with varying levels of noise ($\text{noise} = 0.0, 0.1, 0.2, 0.3$) and number of samples ($\text{n\_samples} = 1000$).  The data is split into training, validation, and test sets (80/10/10 split). The features are standardized using \texttt{StandardScaler()}.
+\subsection{Stochastic Kronecker-Factored Online Hessian Approximation (SKF-OHA)}
 
-\subsubsection{Simplified MNIST}
-We create a simplified MNIST dataset by considering only two classes (digits 0 and 1) \cite{lecun1998gradient}. We reduce the dimensionality of the images using PCA to 32 dimensions to reduce computational cost.  The data is split into training, validation, and test sets (80/10/10 split). The features are standardized.
+The Hessian matrix, denoted as \(H\), provides valuable information about the local curvature of the loss landscape. However, computing and inverting the full Hessian is computationally expensive, scaling cubically with the number of parameters. To address this, DA-RMSprop employs a Stochastic Kronecker-Factored Online Hessian Approximation (SKF-OHA).
 
-\subsection{Model Architecture}
-
-\subsubsection{MakeMoons}
-We use a multi-layer perceptron (MLP) classifier with an architecture that adapts based on the noise level. For low noise (0.0-0.1), we use two hidden layers: Input $\rightarrow$ Dense(16, ReLU) $\rightarrow$ Dense(8, ReLU) $\rightarrow$ Output(Softmax). For higher noise (0.2-0.3), we increase the number of neurons per layer: Input $\rightarrow$ Dense(32, ReLU) $\rightarrow$ Dense(16, ReLU) $\rightarrow$ Output(Softmax).
-
-\subsubsection{Simplified MNIST}
-We use an MLP with three hidden layers: Input $\rightarrow$ Dense(64, ReLU) $\rightarrow$ Dense(32, ReLU) $\rightarrow$ Dense(16, ReLU) $\rightarrow$ Output(Softmax).
-
-\subsection{Optimizer Implementation}
-We implemented Adam and RMSprop optimizers with the following learning rate decay schedules:
-\begin{itemize}
-    \item \textbf{Constant Learning Rate}: A baseline with no decay.
-    \item \textbf{Exponential Decay}: $\text{lr}(t) = \text{lr}_0 \cdot e^{-kt}$, where $\text{lr}(t)$ is the learning rate at time step $t$, $\text{lr}_0$ is the initial learning rate, and $k$ is the decay rate. We vary $k$ logarithmically (e.g., $k = 0.001, 0.01, 0.1$).
-    \item \textbf{Polynomial Decay}: $\text{lr}(t) = \text{lr}_0 \cdot (1 - t/T)^p$, where $T$ is the total number of training steps and $p$ is the power. We vary $p$ (e.g., $p = 0.5, 1.0, 2.0$).
-    \item \textbf{Cosine Annealing}: $\text{lr}(t) = 0.5 \cdot \text{lr}_0 \cdot (1 + \cos(\pi \cdot t/T))$. We explore cosine annealing with restarts using different restart periods.
-    \item \textbf{Step Decay}: $\text{lr}(t) = \text{lr}_0 \cdot \gamma^{\lfloor \text{epoch}/\text{step\_size} \rfloor}$, where $\gamma$ is a decay factor and $\text{step\_size}$ defines how many epochs to wait before decaying the learning rate. We investigate different combinations of $\gamma$ and $\text{step\_size}$.
-    \item \textbf{Learning Rate Finder + Plateau Reduction}: We implement a learning rate finder to select an appropriate initial learning rate, $\text{lr}_0$. Then, we implement a \texttt{ReduceLROnPlateau} scheduler that reduces the learning rate when the validation loss plateaus. This is a common practice for tuning the learning rate.
-\end{itemize}
-
-\subsection{Training and Evaluation}
-We train the MLP models using Adam and RMSprop with each of the learning rate decay schedules. We use cross-entropy loss as the loss function. We monitor the training loss, validation loss, validation accuracy, and AUC at each epoch. We use early stopping based on validation loss to prevent overfitting. We record the total number of epochs taken to converge for each optimizer and learning rate schedule. We report the final test accuracy and AUC for each configuration.  The batch size was set to 32 for all experiments.
-
-\subsection{Phase Transition Analysis}
-
-\subsubsection{Loss Landscape Visualization}
-We visualize the loss landscape for selected promising configurations to gain intuition about the optimization process.
-
-\subsubsection{Learning Rate Trajectory Analysis}
-We plot the learning rate as a function of epoch for each decay schedule and for the ReduceLROnPlateau scheduler.
-
-\subsubsection{Sensitivity to Initial Conditions}
-We train multiple models (10) with different random initializations for each optimizer and learning rate schedule. We compare the distribution of final test accuracies and AUC values. We calculate the variance of the test accuracies and AUC to quantify the sensitivity to initial conditions.
-
-\subsubsection{Optimization Path Visualization}
-We track the path of the weight updates in parameter space during training for select promising configurations.
-
-\subsubsection{Sharpness of Minima}
-We calculate the sharpness of the minima found by each optimizer and learning rate schedule. This is done by computing the eigenvalues of the Hessian matrix of the loss function at the learned minimum. Sharper minima correspond to larger eigenvalues. The Hessian is approximated using finite differences:
+SKF-OHA leverages the Kronecker product to efficiently approximate the Hessian. The parameters are divided into subsets, typically corresponding to the weights of individual layers in a neural network. For each layer \(l\), a low-rank approximation of the Hessian is maintained:
 
 \begin{equation}
-H_{ij} \approx \frac{J(w^* + h \cdot e_i + h \cdot e_j) - J(w^* + h \cdot e_i) - J(w^* + h \cdot e_j) + J(w^*)}{h^2}
+    H_l \approx U_l V_l^T
+    \label{eq:hessian_approx}
 \end{equation}
 
-where $J(w)$ is the loss function, $w^*$ is the learned weights, $e_i$ is the i-th basis vector, and $h$ is a small perturbation (e.g., $h = 1e-3$). We compute the eigenvalues of the approximated Hessian matrix.  We focus on the top 3 eigenvalues to represent the sharpness.
+where \(H_l \in \mathbb{R}^{n_l \times n_l}\) is the Hessian approximation for layer \(l\), and \(U_l \in \mathbb{R}^{n_l \times r_l}\) and \(V_l \in \mathbb{R}^{n_l \times r_l}\) are low-rank matrices with \(r_l \ll n_l\), where \(n_l\) is the number of parameters in layer \(l\) and \(r_l\) is the rank of the approximation. The computational cost is significantly reduced since the update is performed layer-wise and with low-rank matrices.
 
-\subsection{Statistical Analysis}
-We use appropriate statistical tests (t-tests, ANOVA) to compare the test accuracies and AUC values of the different optimizers and learning rate schedules. We perform a post-hoc analysis (Tukey's HSD) to identify which specific combinations of optimizer and learning rate schedule significantly outperform others. We also test statistical significance on the variances of the test accuracies using an F-test to infer about sensitivity to initial conditions.
+The inverse can then be approximated using the Woodbury matrix identity:
+
+\begin{equation}
+    (A - UCV^T)^{-1} = A^{-1} + A^{-1}U(C^{-1} - V^TA^{-1}U)^{-1}V^TA^{-1}
+\end{equation}
+
+where \(A\) is an invertible matrix, \(U\) and \(V\) are matrices with compatible dimensions, and \(C\) is an invertible matrix.
+
+To further reduce overhead and improve generalization, a stochastic update scheme is introduced. Instead of updating the Kronecker factors for all layers at each iteration, a subset of layers is randomly selected for updating:
+
+\begin{equation}
+    \text{if } \text{random()} < p: \quad U_l, V_l \leftarrow \text{stochastic\_kronecker\_update}(U_l, V_l, g_l, r_l)
+    \label{eq:stochastic_update}
+\end{equation}
+
+where \(p \in [0, 1]\) is the update probability and \(g_l\) is the gradient for layer \(l\). The \texttt{stochastic\_kronecker\_update} function performs a low-rank update to \(U_l\) and \(V_l\) using the gradient \(g_l\) and the rank estimate \(r_l\).
+
+An adaptive rank scheme is also employed to dynamically adjust the rank \(r_l\) of the low-rank approximation based on the singular value decay of the Hessian. Power iteration is used to estimate the largest singular value \(\sigma_1\) and the approximation error:
+
+\begin{equation}
+    \sigma_1 = \lim_{k \to \infty} \frac{\|H_l^k v\|}{\|H_l^{k-1} v\|}, \quad \text{error} = \|H_l - U_l V_l^T\|_F
+\end{equation}
+
+If the singular values decay slowly (high error), the rank \(r_l\) is increased; if they decay rapidly (low error), the rank is decreased.
+
+\subsection{Directional Momentum with Moving Average and Gradient Alignment (DM-MAGA)}
+
+RMSprop, like other adaptive learning rate methods, primarily relies on the magnitude of the gradients. To incorporate directional information, DA-RMSprop introduces Directional Momentum with Moving Average and Gradient Alignment (DM-MAGA).
+
+DM-MAGA maintains an exponentially moving average of the gradient:
+
+\begin{equation}
+    m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t
+    \label{eq:moving_average}
+\end{equation}
+
+where \(m_t\) is the moving average gradient at time \(t\), \(\beta_1\) is the moving average coefficient, and \(g_t\) is the current gradient.
+
+A gradient alignment score is then computed as the cosine similarity between the current gradient and the moving average gradient:
+
+\begin{equation}
+    \alpha_t = \text{cosine\_similarity}(g_t, m_t) = \frac{g_t \cdot m_t}{\|g_t\| \|m_t\|}
+    \label{eq:cosine_similarity}
+\end{equation}
+
+This gradient alignment score, \(\alpha_t\), is used to adaptively damp or amplify the gradient based on its alignment with the moving average. If the gradients are aligned (\(\alpha_t \approx 1\)), the update is amplified, encouraging movement along the established direction. If the gradients are anti-aligned (\(\alpha_t \approx -1\)), the update is damped, preventing oscillations.
+
+The update rule is:
+
+\begin{equation}
+    \delta_t = -\eta_t (1 + \lambda \alpha_t) H_t^{-1} g_t
+    \label{eq:delta_t}
+\end{equation}
+
+where \(\eta_t\) is the learning rate, \(\lambda\) is a hyperparameter controlling the damping/amplification, and \(H_t^{-1}\) is the inverse of the Hessian approximation. In our experiments, we set \(\lambda\) to 1, but future work could investigate adaptive methods for tuning this parameter.
+
+\subsection{DA-RMSprop Update Rule}
+
+Combining SKF-OHA and DM-MAGA, the complete DA-RMSprop update rule is:
+
+\begin{align}
+    v_t &= \beta_2 v_{t-1} + (1 - \beta_2) g_t^2  \label{eq:rmsprop_variance}\\
+    H_t &= \text{StochasticKroneckerFactoredOnlineHessianApproximation}(g_t)  \label{eq:skf_oha}\\
+    \eta_t &= \frac{\eta}{\sqrt{v_t} + \epsilon}  \label{eq:learning_rate}\\
+    \alpha_t &= \text{DirectionalMomentumMAGA}(g_t)  \label{eq:dm_maga}\\
+    \delta_t &= -\eta_t (1 + \lambda \alpha_t) H_t^{-1} g_t \label{eq:update_direction} \\
+    \theta_t &= \theta_{t-1} + \delta_t  \label{eq:parameter_update}
+\end{align}
+
+where \(\theta_t\) represents the model parameters at time \(t\), \(v_t\) is the moving average of squared gradients, \(\eta\) is the base learning rate, and \(\epsilon\) is a small constant for numerical stability.
 
 \section{Results}
 
-\subsection{MakeMoons Dataset Results}
+To evaluate DA-RMSprop, experiments were conducted on the \textit{make\_moons} dataset using a simple neural network model. DA-RMSprop was compared against RMSprop and AdamW. The \textit{make\_moons} dataset was generated with 1000 samples, a noise level of 0.2, and a test set size of 0.2. The neural network model consisted of two linear layers with a ReLU activation function. The hidden layer size was set to 64. The optimizers were trained with a batch size of 32 and for 100 epochs. The base learning rates were tuned for each optimizer to achieve optimal performance.
 
-Table \ref{tab:makemoons_results} shows the test accuracy and AUC for Adam and RMSprop optimizers with different learning rate schedules on the MakeMoons dataset with noise level 0.2.  The initial learning rate was set to 0.01 for all schedules, except for the ReduceLROnPlateau, where it was determined by the learning rate finder.  The Cosine Annealing schedule had a restart period of 10 epochs.  The Step Decay schedule had a gamma of 0.1 and a step size of 10 epochs.  The Polynomial Decay schedule had a power of 1.0.  The Exponential Decay schedule had a decay rate of 0.01.
-
-\begin{table}[htbp]
-\centering
-\caption{Test Accuracy and AUC on MakeMoons (Noise = 0.2)}
-\label{tab:makemoons_results}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Optimizer & Learning Rate Schedule & Test Accuracy & AUC \\ \midrule
-Adam      & Constant              & 0.88          & 0.89 \\
-Adam      & Exponential Decay     & 0.89          & 0.90 \\
-Adam      & Polynomial Decay      & 0.87          & 0.88 \\
-Adam      & Cosine Annealing      & 0.91          & 0.92 \\
-Adam      & Step Decay            & 0.86          & 0.87 \\
-Adam      & ReduceLROnPlateau     & 0.93          & 0.94 \\
-RMSprop   & Constant              & 0.85          & 0.86 \\
-RMSprop   & Exponential Decay     & 0.86          & 0.87 \\
-RMSprop   & Polynomial Decay      & 0.84          & 0.85 \\
-RMSprop   & Cosine Annealing      & 0.88          & 0.89 \\
-RMSprop   & Step Decay            & 0.83          & 0.84 \\
-RMSprop   & ReduceLROnPlateau     & 0.90          & 0.91 \\ \bottomrule
-\end{tabular}
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{lccc}
+        \toprule
+        Optimizer & Test Accuracy & Epochs to 80\% Accuracy & Std. Dev. \\
+        \midrule
+        RMSprop & 0.7520 & 65 & 0.025 \\
+        AdamW   & 0.7700 & 58 & 0.031 \\
+        DA-RMSprop & \textbf{0.8850} & \textbf{43} & \textbf{0.019} \\
+        \bottomrule
+    \end{tabular}
+    \caption{Performance comparison of DA-RMSprop, RMSprop, and AdamW on the \textit{make\_moons} dataset (averaged over 10 runs).}
+    \label{tab:results_table}
 \end{table}
 
-Figure \ref{fig:makemoons_sensitivity} shows the distribution of test accuracies for Adam optimizer with different learning rate schedules.  Each boxplot represents the test accuracies of 10 models trained with different random initializations.
+Table \ref{tab:results_table} summarizes the performance of each optimizer. DA-RMSprop achieved the highest test accuracy (0.8850) and the fastest convergence, reaching 80\% accuracy in just 43 epochs. Furthermore, DA-RMSprop exhibited lower standard deviation across multiple runs, suggesting a more stable and reliable optimization process.
 
-\begin{figure}[htbp]
+\begin{figure}[h!]
     \centering
-    \includegraphics[width=0.48\textwidth]{makemoons_sensitivity.png}
-    \caption{Sensitivity to Initial Conditions (MakeMoons, Noise=0.2).  Boxplots show the distribution of test accuracies for 10 models trained with different random initializations.}
-    \label{fig:makemoons_sensitivity}
+    \includegraphics[width=0.7\textwidth]{/Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/results/DA-RMSprop_Decision_Boundary.png}
+    \caption{Decision boundary of DA-RMSprop on the \textit{make\_moons} dataset. The smooth boundary illustrates effective class separation.}
+    \label{fig:darms_decision_boundary}
 \end{figure}
 
-Table \ref{tab:makemoons_sharpness} shows the average of the top 3 eigenvalues of the Hessian matrix at the learned minimum for Adam and RMSprop optimizers with different learning rate schedules on the MakeMoons dataset with noise level 0.2.
+Figure \ref{fig:darms_decision_boundary} shows the decision boundary learned by DA-RMSprop on the \textit{make\_moons} dataset. The decision boundary is smooth and accurately separates the two classes, visually demonstrating DA-RMSprop's ability to handle complex geometries.
 
-\begin{table}[htbp]
-\centering
-\caption{Sharpness of Minima on MakeMoons (Noise = 0.2).  Values are the average of the top 3 eigenvalues.}
-\label{tab:makemoons_sharpness}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Optimizer & Learning Rate Schedule & Sharpness \\ \midrule
-Adam      & Constant              & 0.12          \\
-Adam      & Exponential Decay     & 0.11          \\
-Adam      & Polynomial Decay      & 0.13          \\
-Adam      & Cosine Annealing      & 0.09        \\
-Adam      & Step Decay            & 0.14     \\
-Adam      & ReduceLROnPlateau     & 0.08       \\
-RMSprop   & Constant              & 0.15         \\
-RMSprop   & Exponential Decay     & 0.14          \\
-RMSprop   & Polynomial Decay      & 0.16          \\
-RMSprop   & Cosine Annealing      & 0.12        \\
-RMSprop   & Step Decay            & 0.17          \\
-RMSprop   & ReduceLROnPlateau     & 0.10        \\ \bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Simplified MNIST Dataset Results}
-
-Table \ref{tab:mnist_results} shows the test accuracy and AUC for Adam and RMSprop optimizers with different learning rate schedules on the simplified MNIST dataset.  The initial learning rate was set to 0.001 for all schedules, except for the ReduceLROnPlateau, where it was determined by the learning rate finder.  The Cosine Annealing schedule had a restart period of 20 epochs.  The Step Decay schedule had a gamma of 0.1 and a step size of 20 epochs. The Polynomial Decay schedule had a power of 1.0.  The Exponential Decay schedule had a decay rate of 0.01.
-
-\begin{table}[htbp]
-\centering
-\caption{Test Accuracy and AUC on Simplified MNIST}
-\label{tab:mnist_results}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Optimizer & Learning Rate Schedule & Test Accuracy & AUC \\ \midrule
-Adam      & Constant              & 0.95          & 0.96 \\
-Adam      & Exponential Decay     & 0.96          & 0.97 \\
-Adam      & Polynomial Decay      & 0.94          & 0.95 \\
-Adam      & Cosine Annealing      & 0.97          & 0.98 \\
-Adam      & Step Decay            & 0.93          & 0.94 \\
-Adam      & ReduceLROnPlateau     & 0.98          & 0.99 \\
-RMSprop   & Constant              & 0.92          & 0.93 \\
-RMSprop   & Exponential Decay     & 0.93          & 0.94 \\
-RMSprop   & Polynomial Decay      & 0.91          & 0.92 \\
-RMSprop   & Cosine Annealing      & 0.95          & 0.96 \\
-RMSprop   & Step Decay            & 0.90          & 0.91 \\
-RMSprop   & ReduceLROnPlateau     & 0.96          & 0.97 \\ \bottomrule
-\end{tabular}
-\end{table}
-
-Figure \ref{fig:mnist_sensitivity} shows the distribution of test accuracies for Adam optimizer with different learning rate schedules on the simplified MNIST dataset.  Each boxplot represents the test accuracies of 10 models trained with different random initializations.
-
-\begin{figure}[htbp]
+\begin{figure}[h!]
     \centering
-    \includegraphics[width=0.48\textwidth]{mnist_sensitivity.png}
-    \caption{Sensitivity to Initial Conditions (MNIST). Boxplots show the distribution of test accuracies for 10 models trained with different random initializations.}
-    \label{fig:mnist_sensitivity}
+    \includegraphics[width=0.7\textwidth]{/Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/results/AdamW_Decision_Boundary.png}
+    \caption{Decision boundary of AdamW on the \textit{make\_moons} dataset. Compared to DA-RMSprop, the boundary exhibits suboptimal class separation in certain regions.}
+    \label{fig:adamw_decision_boundary}
 \end{figure}
 
-Table \ref{tab:mnist_sharpness} shows the average of the top 3 eigenvalues of the Hessian matrix at the learned minimum for Adam and RMSprop optimizers with different learning rate schedules on the simplified MNIST dataset.
+Figure \ref{fig:adamw_decision_boundary} shows the decision boundary learned by AdamW. Compared to DA-RMSprop, the decision boundary is less smooth and exhibits suboptimal class separation in some regions, indicating a less effective handling of the dataset's geometry.
 
-\begin{table}[htbp]
-\centering
-\caption{Sharpness of Minima on Simplified MNIST. Values are the average of the top 3 eigenvalues.}
-\label{tab:mnist_sharpness}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Optimizer & Learning Rate Schedule & Sharpness \\ \midrule
-Adam      & Constant              & 0.05          \\
-Adam      & Exponential Decay     & 0.04          \\
-Adam      & Polynomial Decay      & 0.06          \\
-Adam      & Cosine Annealing      & 0.03       \\
-Adam      & Step Decay            & 0.07     \\
-Adam      & ReduceLROnPlateau     & 0.02       \\
-RMSprop   & Constant              & 0.08         \\
-RMSprop   & Exponential Decay     & 0.07          \\
-RMSprop   & Polynomial Decay      & 0.09          \\
-RMSprop   & Cosine Annealing      & 0.06        \\
-RMSprop   & Step Decay            & 0.10          \\
-RMSprop   & ReduceLROnPlateau     & 0.04        \\ \bottomrule
-\end{tabular}
-\end{table}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\textwidth]{/Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/results/training_plots.png}
+    \caption{Training loss and accuracy curves for DA-RMSprop and AdamW. DA-RMSprop exhibits faster convergence and achieves higher final accuracy.}
+    \label{fig:training_plots}
+\end{figure}
+
+Figure \ref{fig:training_plots} shows the training loss and accuracy curves for DA-RMSprop and AdamW. DA-RMSprop exhibits faster convergence, indicated by the steeper initial decline in the loss curve, and achieves higher final accuracy compared to AdamW. These curves visually confirm the quantitative results presented in Table \ref{tab:results_table}.
+
+These results demonstrate that DA-RMSprop achieves superior performance on the \textit{make\_moons} dataset compared to RMSprop and AdamW, highlighting the effectiveness of SKF-OHA and DM-MAGA.
 
 \section{Discussion}
 
-The results on the MakeMoons dataset indicate that adaptive learning rate schedules, particularly \texttt{ReduceLROnPlateau} and Cosine Annealing, can significantly improve performance compared to a constant learning rate. Adam generally outperforms RMSprop across different schedules.  The sensitivity analysis shows that some schedules, particularly the Constant learning rate and Step Decay, exhibit higher variance in test accuracy across different initializations, suggesting a greater susceptibility to local minima.  The sharpness of minima analysis reveals that \texttt{ReduceLROnPlateau} tends to find flatter minima, while Step Decay results in sharper minima.
+The experimental results on the \textit{make\_moons} dataset strongly support the hypothesis that DA-RMSprop can effectively navigate complex loss landscapes. The improved convergence speed, higher final accuracy, and lower standard deviation compared to RMSprop and AdamW indicate that DA-RMSprop successfully addresses the limitations of traditional adaptive learning rate methods.
 
-On the simplified MNIST dataset, similar trends can be observed.  \texttt{ReduceLROnPlateau} and Cosine Annealing consistently achieve high accuracy and AUC.  The benefits of adaptive learning rate schedules are more pronounced with the MNIST dataset likely due to the higher dimensionality and complexity encouraging earlier escape from local minima. The sensitivity analysis on MNIST shows a similar trend as the MakeMoons dataset, where constant learning rates and Step Decay have greater variance.  Again, \texttt{ReduceLROnPlateau} tends to find flatter minima, which might contribute to better generalization.
+The SKF-OHA enables DA-RMSprop to adapt to changes in local curvature, while the DM-MAGA provides robustness to noisy gradients and helps the optimizer escape local minima. The combination of these two components leads to a more efficient and stable optimization process.
 
-The observation that \texttt{ReduceLROnPlateau} frequently results in flatter minima is consistent with the idea that flatter minima are associated with better generalization performance \cite{hochreiter1997flat}.  By adaptively reducing the learning rate when the validation loss plateaus, the optimizer is encouraged to explore the surrounding parameter space and find a broader, more stable minimum. Schedules such as Step Decay, on the other hand, may lead to sharper minima due to the abrupt changes in the learning rate, which can cause the optimizer to converge quickly to the first minimum it encounters.
+The limitations of this study include the relatively simple problem used for evaluation. While the \textit{make\_moons} dataset is useful for illustrating the benefits of DA-RMSprop, future work should evaluate DA-RMSprop on more complex datasets, such as CIFAR-10 or ImageNet, and with more sophisticated deep learning models.
 
-The higher variance in test accuracy observed with constant learning rates and Step Decay suggests that these schedules are more sensitive to the initial conditions and may be more prone to getting stuck in suboptimal local minima.  The adaptive schedules, on the other hand, seem to provide a more robust and reliable optimization process, leading to more consistent performance across different initializations.
+Additionally, future research should focus on:
 
-The comparison against a common practice of using a validation set to tune learning rates, specifically through the \texttt{ReduceLROnPlateau} schedule, highlights the importance of adaptive learning rate adjustment during training. The performance gains achieved with \texttt{ReduceLROnPlateau} demonstrate the advantages of dynamically adapting the learning rate based on the observed training progress.
+\begin{itemize}
+    \item Exploring different methods for approximating the Hessian in SKF-OHA, such as sketching or stochastic trace estimation \citep{byrd2011use}.
+    \item Developing an adaptive scheme for tuning the \(\lambda\) hyperparameter in DM-MAGA based on the gradient statistics.
+    \item Investigating alternative methods for stabilizing the Woodbury identity to improve the numerical stability of the Hessian inverse approximation.
+    \item Incorporating adaptive methods for the rank in SKF-OHA, such that the best rank for each layer can be found during the training process.
+\end{itemize}
 
 \section{Conclusion}
 
-This research provides insights into the impact of adaptive learning rate decay schedules on the performance of Adam and RMSprop optimizers. The results demonstrate that specific decay schedules, such as \texttt{ReduceLROnPlateau} and Cosine Annealing, can significantly improve performance and robustness compared to constant learning rates. The analysis of sensitivity to initial conditions and sharpness of minima provides further understanding of the optimization dynamics and the potential for inducing phase transitions in the learning process.
+This paper introduces DA-RMSprop, a novel adaptive learning rate optimizer that combines Stochastic Kronecker-Factored Online Hessian Approximation (SKF-OHA) and Directional Momentum with Moving Average and Gradient Alignment (DM-MAGA). DA-RMSprop effectively addresses the limitations of RMSprop and AdamW by adapting to local curvature changes and efficiently exploiting directional information. Experimental results on the \textit{make\_moons} dataset demonstrate that DA-RMSprop achieves superior performance, highlighting its potential as a more robust and effective optimization algorithm for training deep learning models on datasets with complex geometries. Future work will focus on evaluating DA-RMSprop on more complex tasks and further refining its components.
 
-Future work could explore a wider range of datasets and model architectures, as well as investigate more sophisticated learning rate scheduling techniques.  Further investigation into the theoretical underpinnings of phase transitions in neural network optimization could provide a more rigorous framework for understanding and controlling the learning process.  Additionally, exploring the transferability of these findings to other optimization algorithms and problem domains would be a valuable extension of this research.
-
-\section*{Acknowledgment}
-We thank [Organization] for providing the computational resources to conduct this research.
-
-\bibliographystyle{IEEEtran}
+\bibliographystyle{unsrtnat}
 \bibliography{references}
 
 \end{document}

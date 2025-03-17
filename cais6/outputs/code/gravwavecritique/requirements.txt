@@ -1,8 +1,0 @@
-numpy
-scipy
-matplotlib
-PyMC3
-arviz
-astropy
-PyYAML
-pytest

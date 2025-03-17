@@ -1,0 +1,12 @@
+Title: /Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/arxiv_papers/2309.06274v1.pdf
+Summary: This paper introduces ELRA (Exponential Learning Rate Adaption), a novel, hyperparameter-free gradient descent optimization method. ELRA adapts the learning rate by striving for orthogonal neighboring gradients, achieving fast convergence and rotation invariance. Demonstrated on MNIST, ELRA outperforms state-of-the-art optimizers and opens a new research direction for gradient descent methods. The method comes in two variants, c2min and p2min, each using a different approach for updating the learning rate based on cosine similarity or a parabola-based estimation, respectively.
+
+
+Title: /Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/arxiv_papers/2310.03156v2.pdf
+Summary: FEDHYPER is a novel federated learning (FL) algorithm that uses hypergradient descent to schedule both global and local learning rates. It dynamically adjusts learning rates on the server and clients, improving convergence speed and final accuracy while demonstrating robustness to suboptimal initial learning rate configurations. Theoretical analysis and experiments on vision and language datasets show that FEDHYPER converges 1.1-3x faster than FedAvg and can increase accuracy by up to 15% under suboptimal conditions.
+
+
+Title: /Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/arxiv_papers/2303.00565v1.pdf
+Summary: This paper introduces AdaSAM, an enhanced version of Sharpness-Aware Minimization (SAM) that incorporates adaptive learning rates and momentum. The authors provide a theoretical convergence rate of O(1/√bT) for AdaSAM in stochastic non-convex settings, demonstrating a linear speedup with respect to mini-batch size (b). Experiments on NLP tasks show AdaSAM achieves superior performance compared to SGD, AMSGrad, and SAM. The key to the analysis involves decoupling the perturbation, adaptive learning rate, and momentum steps through a delayed second-order momentum term.
+
+

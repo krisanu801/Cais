@@ -37,7 +37,7 @@ def initialize_genai() -> Optional[genai.GenerativeModel]:
         # Load environment variables
         load_dotenv()
         
-        api_key = "AIzaSyB0pNwNtIKilIvqKmSvbN0Za291PzHHyvQ"
+        api_key = "AIzaSyCoGZgxiG3fxp7DLbQiDJVeZWOQGTOiNRg"
         if not api_key:
             log.error("GOOGLE_API_KEY environment variable not found")
             return None
@@ -67,14 +67,18 @@ class ProjectStructureError(Exception):
     pass
 
 class ProjectGenerator:
-    def __init__(self):
+    def __init__(self , chat_history):
         """Initialize ProjectGenerator with detailed error checking."""
         try:
             self.generated_path = Path("/Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/code")
             self.generated_path.mkdir(exist_ok=True)
             
             log.info("Initializing Gemini AI...")
-            self.chat = initialize_genai()
+            self.model = genai.GenerativeModel('gemini-2.0-flash')
+            self.chat = self.model.start_chat()
+            if chat_history is not None:
+                self.chat.history = chat_history
+            self.chat_history = chat_history
             
             if not self.chat:
                 raise RuntimeError("Failed to initialize Gemini AI model")
@@ -85,7 +89,7 @@ class ProjectGenerator:
             log.error(f"Failed to initialize ProjectGenerator: {str(e)}")
             raise
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    #@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     def _make_genai_request(self, prompt: str) -> str:
         """Make a request to Gemini AI with improved response handling."""
         if not self.chat:
@@ -94,13 +98,9 @@ class ProjectGenerator:
         try:
             log.debug(f"Sending prompt to Gemini (length: {len(prompt)} chars)")
             response = self.chat.send_message(
-                prompt,
-                generation_config={
-                    'temperature': 0.2,
-                    'top_p': 0.8,
-                    'top_k': 40
-                }
+                prompt
             )
+            self.chat_history = self.chat.history
             
             if not response or not response.text:
                 raise ValueError("Empty response received from Gemini")
@@ -110,13 +110,16 @@ class ProjectGenerator:
             
         except Exception as e:
             log.error(f"Gemini AI request failed: {str(e)}")
-            log.debug(f"Prompt that caused the error: {prompt[:200]}...")
-            raise
+            log.debug(f"retrying...")
+            time.sleep(100)
+            self.chat = self.model.start_chat()
+            self.chat.history = self.chat_history
+            return self._make_genai_request(prompt)
 
-    def generate_project_structure(self, project_name: str, project_description: str) -> Optional[Dict]:
+    def generate_project_structure(self, project_name: str , research_topic : str) -> Optional[Dict]:
         """Generate project structure with improved content generation."""
-        if not project_name or not project_description:
-            log.error("Project name and description are required")
+        if not project_name:
+            log.error("Project name is required")
             return None
 
         log.info(f"Generating project structure for: {project_name}")
@@ -124,13 +127,12 @@ class ProjectGenerator:
         
         
         prompt = f"""
+        According to the topic :{research_topic} > we have already got the novel idea  , now its time to show that it is also better than other ones
         Create a detailed project structure for a Python project named: "give it a project name as you like"
-        Project Description: {project_description}
         
         The response must be a valid JSON object with this structure:
         {{
             "project_name": "{project_name}",
-            "description": "{project_description}",
             "structure": {{
                 "directories": [
                     "test",
@@ -159,20 +161,26 @@ class ProjectGenerator:
         }}
 
         Include:
+        0.create minimal files as required
         1. All necessary Python files
+        2.running the main file should give all necessary results , and plots , tabular or numerical data
         5. Requirements file
         6. README.md
-        7. Setup files
         8. CI/CD configuration if needed
         9. Environment configuration
-        10. Logging configuration
-        11.if no data is given use data available over internet 
+        10.if no data is given use data available over internet 
 
         Ensure:
         1. All paths use forward slashes 
         2. Leave file content empty - it will be generated separately
         3. Provide clear descriptions for each file
         4. create config.yaml if needed , then if there is config.yaml there should be config.py with a load config function
+        5. ensure no logging , use print instead
+        6. you write file contents like if i run the main file the whole experimentation is done at once.
+        7. ensure that the output should be able to get loaded by json after stripping
+        8.Use ONLY double quotes for keys and string values in the output.
+
+        remember we are running files in cpu
         """
         
         try:
@@ -226,14 +234,15 @@ class ProjectGenerator:
             3. Ensure **local imports work correctly in any folder structure**:
                 - Dynamically adjust `sys.path` to allow imports from the project root.
                 - Avoid assuming directories are Python packages.
-            4. Add error handling
-            5. Add logging
-            6. Add type hints (for Python)
-            7. Add docstrings (for Python) or JSDoc (for JavaScript)
-            8. Follow best practices for the file type
+            4. ensure no logging , use print instead
+            5. Add type hints (for Python)
+            6. Add docstrings (for Python) or JSDoc (for JavaScript)
+            7. Follow best practices for the file type
             8. Include example usage in comments
-            9. If this project gives images or texts as output  , save them in folder_path:/Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/results
-            
+            9. save output texts or images , save them in folder_path:/Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/results
+            10.you must create some output images or numerical data
+            11.do not use error handling
+            12.ensure correct implementation
             
             Return ONLY the file content, no explanations or markdown formatting.
             """
@@ -426,11 +435,12 @@ class ProjectGenerator:
             #log.info(f"Running project from: {project_path}")
 
             prompt = f"""
-            Generate terminal commands for running the project in MacOS cpu ,
+            Generate terminal commands for running the project in MacOS  ,
 
             **do not create conda envirnoments   , use venv
             Return ONLY the commands, no explanations or markdown formatting.
             no need for git cloning 
+            run python files in unbuffered mode
             give command only for using venv , installing dependencies by requirement.txt , and then execute the main python file. nothing more nothing less
             """
             
@@ -461,7 +471,7 @@ class ProjectGenerator:
             
             if result.returncode != 0:
                 console.print(f"[red]Failed to run project. Check the logs for details.[/red]")
-                self.correct_errors(stderr.strip())
+                return self.correct_errors(stderr.strip())
                 
             else:
                 console.print(f"[green]Project run successfully.[/green]")
@@ -475,26 +485,42 @@ class ProjectGenerator:
     def correct_errors(self , error):
         print(error)
         prompt = f"""
-            1.edit precreated files content needed to correct the errors:{repr(error)}
+            0.while running the project i encountered this error:{repr(error)} , find out the source of the error,
+            go through the file content and see how and and why , where  it is causing error , and correct the error effectively
+            1.edit precreated files content needed to correct the errors
             in already given format to write file content
             2.edit content properly remembering past commands
-            3.The response must be a valid JSON object with this structure:
+            3.you can also create new files *if not already been created
+            3.**The response must be a valid JSON object with this structure:
             files : [
                 {{
                         "file_path": "path of the file along with file name",
                         "Code": " content code",
                 }}
             ]
+            *ensure that the output should be able to get loaded by json after stripping*
+            **Use ONLY double quotes for keys.
+            **Use ONLY single quotes for code content.
             
             """
-        #user_input= input("Enter your prompt: ")
         response = self._make_genai_request(prompt)
         response = response.strip()
         if response.startswith('```json'):
             response = response[7:]
         if response.endswith('```'):
             response = response[:-3]
-        response = json.loads(response)
+        try:
+            response = json.loads(response.strip())
+        except Exception as e:
+            print(f"Failed to parse JSON: {str(e)}")
+            print(response)
+            response = self._make_genai_request(prompt + "error in json loading afterwards , ensure proper output")
+            response = response.strip()
+            if response.startswith('```json'):
+                response = response[7:]
+            if response.endswith('```'):
+                response = response[:-3]
+            response = json.loads(response.strip())
         print(response)
         for file in  response['files'] :
             file_path = file['file_path']
@@ -503,7 +529,7 @@ class ProjectGenerator:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             print(f'editing {file_path}')
             self._edit_files(file_path, content)
-        self.run_project(self.project_path, self.project_data)
+        return self.run_project(self.project_path, self.project_data)
 
     def update_project(self  , user_input):
         print(user_input)
@@ -543,56 +569,46 @@ class ProjectGenerator:
 
 
 @app.command()
-def generate(description : str):
+def generate(research_topic:str , chat_history=None ):
     """Generate a new project with comprehensive error handling."""
-    try:
-        name = "Fun"
-        log.info(f"Starting project generation for '{name}'")
-        generator = ProjectGenerator()
-        
-        with console.status("[bold green]Generating project structure...") as status:
-            project_data = generator.generate_project_structure(name, description)
-            print(project_data)
+    name = "Fun"
+    log.info(f"Starting project generation for '{name}'")
+    generator = ProjectGenerator(chat_history)
+    
+    with console.status("[bold green]Generating project structure...") as status:
+        project_data = generator.generate_project_structure(name , research_topic)
+        print(project_data)
             
-            if not project_data:
-                log.error("Project structure generation failed")
-                console.print("[red]Failed to generate project structure. Check the logs for details.[/red]")
-                raise typer.Exit(1)
+        if not project_data:
+            log.error("Project structure generation failed")
+            console.print("[red]Failed to generate project structure. Check the logs for details.[/red]")
+            raise typer.Exit(1)
                 
-            status.update("[bold green]Creating project files...")
-            project_path = generator.create_project_files(project_data)
+        status.update("[bold green]Creating project files...")
+        project_path = generator.create_project_files(project_data)
             
-            if not project_path:
-                log.error("Project file creation failed")
-                console.print("[red]Failed to create project files. Check the logs for details.[/red]")
-                raise typer.Exit(1)
+        if not project_path:
+            log.error("Project file creation failed")
+            console.print("[red]Failed to create project files. Check the logs for details.[/red]")
+            raise typer.Exit(1)
             
-            #generator.delete_empty_files_and_folders(project_path)
+        #generator.delete_empty_files_and_folders(project_path)
             
-            console.print(f"\n[bold green]✓[/bold green] Project created successfully at: {project_path}")
+        console.print(f"\n[bold green]✓[/bold green] Project created successfully at: {project_path}")
             
-            # Display setup instructions
-            console.print("\n[bold]Setup Instructions:[/bold]")
-            for i, step in enumerate(project_data['setup_instructions'], 1):
-                console.print(f"{i}. {step}")
+        # Display setup instructions
+        console.print("\n[bold]Setup Instructions:[/bold]")
+        for i, step in enumerate(project_data['setup_instructions'], 1):
+            console.print(f"{i}. {step}")
 
-            # Ask if the user wants to run the project
-            console.print("\n[bold yellow]Do you want to run the project? (Press Enter to run, or type 'no' to skip)[/bold yellow]")
-            user_input = input().strip().lower()
-            
-            if user_input == "" or user_input == "yes":
-                log.info(f"Running project from: {project_path}")
-                return generator.run_project(project_path , project_data)
+        # Ask if the user wants to run the project
+        log.info(f"Running project from: {project_path}")
+        return generator.run_project(project_path , project_data) , generator.chat_history
 
             
-
-    except Exception as e:
-        log.error(f"Project generation failed: {str(e)}")
-        console.print(f"[red]Error: Project generation failed. Check the logs for details.[/red]")
-        raise typer.Exit(1)
 
         
 if __name__ == '__main__':
-    generate("create one simple python file printing hello world")
+    generate("" , research_topic="")
     # Example Usage:
     # Assuming you have a config.yaml file with 'gemini_api_key'

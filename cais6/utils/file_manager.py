@@ -50,7 +50,12 @@ class FileManager:
             filepath = os.path.join(self.papers_dir, filename)
             with open(filepath, 'w') as f:
                 f.write(paper_content)
-            logger.info(f"Paper saved to: {filepath}")
+            logger.info(f"Ltex Code saved to: {filepath}")
+            logger.info("Compiling LaTeX document...")
+            command = "cd /Users/krisanusarkar/Documents/ML/unt/generated/cais6/cais6/outputs/papers && pdflatex final_paper.tex && open final_paper.pdf"
+            os.system(command)
+            logger.info("LaTeX document compiled successfully.")
+
         except Exception as e:
             logger.exception(f"Error saving paper to file: {e}")
 
