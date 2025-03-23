@@ -27,7 +27,7 @@ cais6 is a Python project that aims to develop a fully autonomous, multi-agent A
 
 ## Sample Output
 
-For a simple prompt like "create a better optimizer than rmsprop and adam and compare only on *makemoons" it gave us output [PDF1](AIgeneratedpaper.pdf) , [PDF2](MAMIC-LC.pdf)
+For a simple prompt like "create a better optimizer than rmsprop and adam and compare only on *makemoons" it gave us output [PDF1](AIgeneratedpaper.pdf) , [PDF2](MAMIC-LC.pdf) ,[PDF3](LAMA-Adam.pdf)
 
 ## Project Structure
 
